@@ -1,0 +1,14 @@
+# Sensible
+*.bat
+*.cmd
+opencode.json
+tiaolder-version.txt
+
+# Allow example scripts in scripts/
+!scripts/*.cmd
+!scripts/*.bat
+!scripts/tiaolder-version.txt
+
+# OS
+.DS_Store
+Thumbs.db

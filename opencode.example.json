@@ -1,0 +1,32 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "meu-provedor-nuvem": {
+      "options": {
+        "apiKey": "sk-sua-chave",
+        "baseURL": "https://api.provedor.com/v1"
+      }
+    },
+    "meu-provedor-local": {
+      "api": "openai",
+      "options": {
+        "baseURL": "http://host:1234/v1",
+        "apiKey": "sk-local"
+      }
+    }
+  },
+  "mcp": {
+    "tiav21": {
+      "type": "local",
+      "command": ["cmd.exe", "/c", ".\\scripts\\tia-mcp.cmd"],
+      "enabled": true,
+      "timeout": 120000
+    },
+    "tiaolder": {
+      "type": "local",
+      "command": ["cmd.exe", "/c", ".\\scripts\\tia-openness.cmd"],
+      "enabled": true,
+      "timeout": 120000
+    }
+  }
+}
