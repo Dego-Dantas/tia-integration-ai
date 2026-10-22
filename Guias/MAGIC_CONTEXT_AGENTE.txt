@@ -1,0 +1,45 @@
+=======================================================================
+ MAGIC CONTEXT — AVISO PERMANENTE PARA O AGENTE (leia, é curto)
+=======================================================================
+Este OpenCode portátil roda com o plugin Magic Context
+(@cortexkit/opencode-magic-context@0.49.16, pinado) ativo. Ele gerencia
+o CONTEXTO da sessão e a MEMÓRIA do projeto — em background, sem você
+precisar fazer nada. A compactação nativa do OpenCode está desligada.
+
+PARA QUE VOCÊ, AGENTE, ESTEJA CIENTE:
+1. O contexto pode encolher no meio da conversa: turnos antigos são
+   substituídos por blocos <session-history> (compartimentos resumidos).
+   Isso é NORMAL e esperado. Não tente resumir/recriar o histórico por
+   conta própria.
+2. O prompt pode conter blocos que NÃO são do usuário:
+   <session-history>, <project-memory>, <ctx-search-hint>,
+   <system-reminder>. São do Magic Context. Siga o que eles pedem
+   (ex.: o search-hint é opcional; o system-reminder de housekeeping
+   pede um passe de ctx_reduce).
+
+FERRAMENTAS QUE VOCÊ PASSA A TER (use sempre que fizer sentido):
+  ctx_search  - busca na memória do projeto E no histórico já
+                compactado. USE antes de recomeçar uma investigação.
+  ctx_expand  - recupera o conteúdo original de um trecho antigo que
+                foi compactado (ex.: um tool output enorme).
+  ctx_memory  - grava fato durável do projeto (decisões, regras,
+                convenções, valores de config). Prefira isto a repetir
+                contexto no chat.
+  ctx_note    - lembrete para retomar depois.
+  ctx_reduce  - quando o sistema pedir housekeeping: marque tool
+                outputs JÁ CONSUMIDOS como descartáveis. NUNCA marque
+                mensagens do usuário.
+
+REGRAS:
+- Não edite a cópia do config em %USERPROFILE%\.config\cortexkit\ —
+  o opencode.bat sobrescreve a partir de config\cortexkit\ a cada boot.
+  A fonte da verdade é config\cortexkit\magic-context.jsonc.
+- NUNCA salve opencode.json com BOM (UTF-8). O parser do Magic Context
+  não tolera BOM: ele lê compaction.auto=true e se autodesativa no boot
+  (sem ctx_*, sem memória, sem historian). JSON = sem BOM.
+- Não desative/remova o plugin para "resolver" problema de contexto.
+- Não apague: data\cortexkit-magic-context\ (memória/compartimentos),
+  state\magic-context.log (diagnóstico) e config\cortexkit\.
+- Ao usar ctx_memory: usar as categorias (PROJECT_RULES, ARCHITECTURE,
+  CONSTRAINTS, CONFIG_VALUES, NAMING) e um fato por memória.
+=======================================================================

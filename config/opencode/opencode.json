@@ -1,0 +1,49 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "Guias/MAGIC_CONTEXT_AGENTE.txt"
+  ],
+  "providers": {
+    "lmstudio": {
+      "name": "LMStudio Local (Host)",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "http://192.168.79.1:1234/v1",
+        "apiKey": "sk-local"
+      },
+      "models": {
+        "local-model": {
+          "name": "Modelo Local (LMStudio / llama.cpp)",
+          "capabilities": {
+            "tools": true,
+            "input": ["text"],
+            "output": ["text"]
+          },
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          }
+        }
+      }
+    }
+  },
+  "mcp": {
+    "servers": {
+      "TIA-PORTAL": {
+        "type": "local",
+        "command": [
+          "cmd.exe",
+          "/c",
+          ".\\tia-openness.cmd"
+        ],
+        "timeout": 120000
+      }
+    }
+  },
+  "compaction": {
+    "auto": false
+  },
+  "plugins": [
+    "@cortexkit/opencode-magic-context@0.49.16"
+  ]
+}

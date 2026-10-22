@@ -1,219 +1,161 @@
-# Guia de Configuração — OpenCode + TIA Portal MCP
+# Guia de Configuração — OpenCode Portable v2 + TIA Portal MCP + Magic Context
 
-Este guia descreve como configurar o ambiente de integração entre OpenCode (CLI com IA) e Siemens TIA Portal usando o protocolo MCP com dois servidores distintos.
+Este guia descreve como configurar e utilizar o ambiente portátil do **OpenCode (v2+)** integrado ao **Siemens TIA Portal** via **MCP (`bulaofen0036-coder/TIA_Portal_Openness_MCP`)** e **Magic Context**.
+
+---
 
 ## Arquitetura de Referência
 
 ```
-VM (Windows) ─── VMnet1 ─── Host (Windows)
-     │                            │
-     │  proxy HTTP/HTTPS          │ Wi-Fi → Internet
-     └── http://host:3128 ────────┘
+VM (Windows) ─── Rede Local / VMnet1 ─── Host (Windows)
+     │                                        │
+     ├── Proxy HTTP/HTTPS (porta 3128) ───────┼──► Internet (APIs Cloud, npm, GitHub)
+     └── API Local (porta 1234) ──────────────┴──► LMStudio / llama.cpp (Opcional)
 ```
 
-- **VM**: Máquina virtual com TIA Portal, OpenCode e servidores MCP
-- **Host**: Máquina física com proxy Node.js e modelos locais
+- **VM (ou PC com TIA Portal)**: Executa o TIA Portal (V20/V21) e a pasta portátil do projeto.
+- **Host**: Executa o `proxy/proxy.js` (caso a VM não tenha internet direta) e, opcionalmente, modelos locais (LMStudio / `llama.cpp`).
+
+---
 
 ## Pré-requisitos
 
-### VM
-- Windows 10/11
-- .NET SDK 8.0.421+
-- .NET Framework 4.8 Runtime
-- TIA Portal V20+ instalado com Openness API
-- Usuário no grupo `Siemens TIA Openness`
+### Na máquina com TIA Portal (VM ou PC local)
+- Windows 10/11 (x64)
+- Siemens TIA Portal V20 e/ou V21 instalado com **TIA Portal Openness**
+- Usuário do Windows adicionado ao grupo local `Siemens TIA Openness` (reiniciar sessão após adicionar)
+- **.NET Framework 4.8 Runtime** (para TIA Portal V20)
+- **.NET 8.0 Runtime** (para TIA Portal V21)
 
-### Host
-- Node.js
-- VMware com adaptador VMnet1 ativo
+### No Host (apenas se usar VM offline ou modelo local)
+- Node.js (para rodar `proxy/proxy.js`)
+- *(Opcional)* LMStudio ou servidor compatível com OpenAI na porta `1234`
 
-## Servidores MCP
+---
 
-Este projeto utiliza **dois servidores MCP** com propósitos distintos:
+## Passo a Passo
 
-### tiav21 (Czarnak — ~25 tools)
+### 1. Selecionar a Versão do TIA Portal
 
-Focado no TIA Portal V21. Usado para edição de blocos SCL/LAD, tags, hardware e navegação.
+Edite o arquivo `tiaolder-version.txt` na raiz do projeto com o número da versão desejada:
 
-**Comando:** `scripts/tia-mcp.cmd`
-```batch
-@echo off
-"%~dp0..\tia-mcp\TiaMcpServer.exe"
+```text
+20  →  TIA Portal V20 (padrão)
+21  →  TIA Portal V21
 ```
 
-### tiaolder (bulaofen0036 — ~189 tools)
+O wrapper `tia-openness.cmd` lê esse arquivo automaticamente e inicia o executável correspondente (`runtime\v20\TiaMcpServer.exe` ou `runtime\v21\TiaMcpServer.exe`) com `--profile full`.
 
-Versão configurável (V16–V21, ver branches do repositório). Usado para geração completa de projetos.
+### 2. Iniciar o Proxy no Host (se estiver em VM sem internet direta)
 
-**Comando:** `scripts/tia-openness.cmd`
-```batch
-@echo off
-set /p TIA_VER=<"%~dp0tiaolder-version.txt"
-"%~dp0..\tia-openness-mcp\TIA_MCP_Delivery_v2.2.4_20260615\tools\tiaportal-mcp\src\TiaMcpServer\bin-v20\Release\net48\TiaMcpServer.exe" --tia-major-version %TIA_VER% %*
-```
-
-A versão do TIA é definida em `scripts/tiaolder-version.txt`:
-
-```
-20  →  V20 (padrão)
-21  →  V21
-19  →  V19 (branch comunitário)
-18  →  V18 (branch comunitário)
-17  →  V17 (branch comunitário)
-16  →  V16 (branch comunitário)
-```
-
-## Configuração Passo a Passo
-
-### 1. Proxy no Host
-
-Inicie o proxy HTTP CONNECT no host para dar acesso à internet para a VM:
+No Host, execute `proxy\iniciar-proxy.bat` ou via terminal:
 
 ```powershell
-node proxy.js 3128
+node proxy/proxy.js 3128
 ```
 
-Para iniciar automaticamente no login, coloque um atalho em `shell:startup`.
+> O `opencode.bat` testa automaticamente se `192.168.79.1:3128` está ativo. Se estiver acessível, configura `HTTP_PROXY` e `HTTPS_PROXY`; caso contrário, usa a conexão direta da máquina.
 
-### 2. Copiar Arquivos para a VM
+### 3. Configurar Providers de IA (`config/opencode/opencode.json`)
 
-Copie a pasta do projeto para a VM em `C:\TIA\opencode-portable\`.
-
-Ajuste os caminhos nos wrappers em `scripts/` para refletir a localização dos executáveis MCP na sua máquina.
-
-### 3. Configurar Variáveis de Ambiente
-
-Na VM, antes de iniciar o OpenCode:
-
-```cmd
-set HTTP_PROXY=http://host:3128
-set HTTPS_PROXY=http://host:3128
-set NO_PROXY=localhost,127.0.0.1,host
-set API_KEY=sk-sua-chave
-```
-
-> `NO_PROXY` com o IP do host é essencial para que o tráfego de provedores locais (porta 1234) vá direto para o host sem passar pelo proxy.
-
-### 4. Configurar opencode.json
-
-Copie o arquivo de exemplo e edite com suas credenciais:
-
-```bash
-cp opencode.example.json opencode.json
-```
-
-O arquivo deve conter ambos os MCPs e os providers desejados:
+O arquivo `config/opencode/opencode.json` usa o schema do **OpenCode v2** (`providers`, `mcp.servers`, `plugins`):
 
 ```json
 {
-  "provider": {
-    "meu-provedor-nuvem": {
-      "options": {
-        "apiKey": "sk-sua-chave",
-        "baseURL": "https://api.provedor.com/v1"
-      }
-    },
-    "meu-provedor-local": {
-      "api": "openai",
-      "options": {
-        "baseURL": "http://host:1234/v1",
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "Guias/MAGIC_CONTEXT_AGENTE.txt"
+  ],
+  "providers": {
+    "lmstudio": {
+      "name": "LMStudio Local (Host)",
+      "package": "@opencode/ai/providers/openai-compatible",
+      "settings": {
+        "baseURL": "http://192.168.79.1:1234/v1",
         "apiKey": "sk-local"
+      },
+      "models": {
+        "local-model": {
+          "name": "Modelo Local (LMStudio / llama.cpp)",
+          "capabilities": {
+            "tools": true,
+            "input": ["text"],
+            "output": ["text"]
+          },
+          "limit": {
+            "context": 131072,
+            "output": 32768
+          }
+        }
       }
     }
   },
   "mcp": {
-    "tiav21": {
-      "type": "local",
-      "command": ["cmd.exe", "/c", "C:\\caminho\\scripts\\tia-mcp.cmd"],
-      "enabled": true,
-      "timeout": 120000
-    },
-    "tiaolder": {
-      "type": "local",
-      "command": ["cmd.exe", "/c", "C:\\caminho\\scripts\\tia-openness.cmd"],
-      "enabled": true,
-      "timeout": 120000
+    "servers": {
+      "TIA-PORTAL": {
+        "type": "local",
+        "command": [
+          "cmd.exe",
+          "/c",
+          ".\\tia-openness.cmd"
+        ],
+        "timeout": 120000
+      }
     }
-  }
+  },
+  "compaction": {
+    "auto": false
+  },
+  "plugins": [
+    "@cortexkit/opencode-magic-context@0.49.16"
+  ]
 }
 ```
 
-> **Importante:** Se houver um arquivo `%USERPROFILE%\.opencode\opencode.json` na VM, ele pode conflitar com a config da pasta portátil. Certifique-se de que ambos tenham as mesmas entradas MCP.
+> **IMPORTANTE — Sempre salvar `opencode.json` em UTF-8 SEM BOM:**
+> O parser do plugin Magic Context não aceita UTF-8 com BOM (*Byte Order Mark*). Se o `opencode.json` tiver BOM, o plugin não consegue ler `compaction.auto: false` e se desativa no boot.
 
-## Uso dos Agents
+### 4. Configurar o Magic Context (`config/cortexkit/magic-context.jsonc`)
 
-Com a configuração pronta, dentro do OpenCode:
+O arquivo `config/cortexkit/magic-context.jsonc` define qual modelo será usado em background pelo **`historian`** (resumo de turnos antigos) e pelo **`dreamer`** (memória do projeto). Por padrão, vem configurado com um modelo gratuito nativo do OpenCode (`opencode/gpt-5-nano`), funcionando sem configuração adicional.
 
-```
-@tiav21 browse o projeto tia e me mostre a arvore
-@tiav21 crie uma tag "Sensor_01" do tipo BOOL
-@tiav21 atualize a logica do bloco "Main" com este SCL
+Para alterar para outro modelo (local ou nuvem), consulte [Guias/GUIA_TROCAR_MODELO_MAGIC_CONTEXT.md](../Guias/GUIA_TROCAR_MODELO_MAGIC_CONTEXT.md).
 
-@tiaolder crie um projeto novo com um CLP S7-1200 ou S7-1500
-@tiaolder adicione um bloco FB "ControleMotor" ao projeto
-```
+### 5. Executar o OpenCode Portable
 
-Consulte [AGENTS.md](../AGENTS.md) para a lista completa de ferramentas de cada agent.
+Dê dois cliques em **`opencode.bat`**.
 
-## Comandos de Diagnóstico
+- No primeiro uso (caso tenha clonado apenas o código-fonte do Git sem o `opencode.exe`), o `opencode.bat` executará automaticamente o `update-all.ps1` para baixar o `opencode.exe`.
+- Todas as pastas de estado (`config/`, `data/`, `state/`, `cache/`) ficam contidas dentro da própria pasta portátil.
 
-### Testar worker tiav21
+---
 
-```cmd
-echo {"method":"browse_project_tree","projectPath":null} | "C:\caminho\tia-mcp\openness-worker\TiaMcpServer.OpennessWorker.exe"
-```
+## Atualizador Automático (`atualizar.bat` / `update-all.ps1`)
 
-### Testar servidor MCP completo (tiav21)
+> [!WARNING]
+> **Recurso para Teste (Experimental — Pode Quebrar):**
+> O script de atualização automática (`update-all.ps1` / `atualizar.bat`) foi criado **para testes** e pode quebrar caso o formato dos pacotes no npm ou das releases no GitHub mude. Faça backup da pasta antes de rodar.
 
-```cmd
-echo {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}} | dotnet "C:\caminho\tia-mcp\TiaMcpServer.dll"
-```
-
-### Verificar proxy
+Para atualizar o **OpenCode v2**, o **Magic Context** e o **MCP TIA-PORTAL (bulaofen0036)** sem perder suas configurações e removendo arquivos antigos (*zero leftovers*):
 
 ```powershell
-Get-NetTCPConnection -LocalPort 3128
+# Atualizar tudo (ou dar duplo clique em atualizar.bat):
+.\atualizar.bat
+
+# Apenas verificar se existem versões novas disponíveis:
+powershell -ExecutionPolicy Bypass -File .\update-all.ps1 -CheckOnly
+
+# Atualizar apenas um componente ('opencode', 'magic-context' ou 'tia-mcp'):
+powershell -ExecutionPolicy Bypass -File .\update-all.ps1 -Component tia-mcp
 ```
 
-### Testar conectividade da VM
-
-```powershell
-Invoke-RestMethod -Uri 'https://api.seu-provedor.com/v1/models' -Headers @{Authorization="Bearer $env:API_KEY"}
-```
-
-## Acesso a Modelos Locais
-
-Provedores locais rodando no **host** ficam acessíveis pela VM via rede VMnet1.
-
-**Requisito:** Configurar o provedor local para escutar em `0.0.0.0:1234`.
-
-Para testar da VM:
-```cmd
-curl http://host:1234/v1/models
-```
+---
 
 ## Troubleshooting
 
 | Problema | Solução |
 |---|---|
-| MCP "failed" ao abrir | Verificar config duplicada em `%USERPROFILE%\.opencode\opencode.json` |
-| `-32000: Connection closed` | Servidor MCP crashou ou timeout — aumentar timeout para 120s e verificar se TIA Portal está aberto |
-| Conexão fechada | Aumentar timeout para 120s |
-| Proxy não conecta | Liberar porta 3128 no firewall do host |
-| Worker access denied | Verificar grupo `Siemens TIA Openness` com `whoami /groups \| findstr Openness` |
-| `dotnet.exe` não encontrado | Usar `cmd.exe /c` com wrapper (caminho com espaços) |
-| Provedor local inacessível na VM | Proxy roteando tráfego local — adicionar IP do host no `NO_PROXY` |
-
-## Segurança
-
-- Chaves de API ficam em texto plano nos arquivos de configuração — mantenha os arquivos seguros e não os compartilhe
-- O `.gitignore` já exclui `*.bat`, `*.cmd` e `opencode.json` para evitar vazamento de credenciais
-- Para isolamento total, use modelos locais em vez de APIs de nuvem
-- O tráfego VM→Host via VMnet1 é rede privada local
-
-## Referências
-
-- [TIA Portal MCP (Czarnak)](https://github.com/Czarnak/tia-portal-mcp)
-- [TiaMcpServer NuGet](https://www.nuget.org/packages/TiaMcpServer)
-- [OpenCode docs](https://opencode.ai/docs)
-
+| Ferramentas `ctx_*` do Magic Context não aparecem | Verifique se `config/opencode/opencode.json` está salvo em **UTF-8 sem BOM** e com `"compaction": { "auto": false }` |
+| MCP `TIA-PORTAL` falha ao iniciar | Confirme a versão em `tiaolder-version.txt` (`20` ou `21`) e verifique se o usuário está no grupo `Siemens TIA Openness` (`whoami /groups \| findstr Openness`) |
+| Erro de conexão na VM ao atualizar ou usar nuvem | Verifique se `proxy/iniciar-proxy.bat` está rodando no Host e se a porta `3128` está liberada no firewall |
+| Modelo local (LMStudio) inacessível pela VM | No LMStudio do Host, ative *Bind to all interfaces (`0.0.0.0:1234`)* e certifique-se de que o IP do Host está no `NO_PROXY` |

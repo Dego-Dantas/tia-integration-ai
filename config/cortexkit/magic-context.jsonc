@@ -1,0 +1,24 @@
+{
+  "$schema": "https://raw.githubusercontent.com/cortexkit/magic-context/master/assets/magic-context.schema.json",
+  "language": "pt",
+  "auto_update": false,
+  "allow_home_project": true,
+  "historian_timeout_ms": 600000,
+  "historian": {
+    "opencode": {
+      "model": "opencode/gpt-5-nano",
+      "fallback_models": []
+    },
+    "maxTokens": 8192
+  },
+  "embedding": {
+    "provider": "off"
+  },
+  "dreamer": {
+    "opencode": {
+      "model": "opencode/gpt-5-nano",
+      "fallback_models": []
+    },
+    "maxTokens": 8192
+  }
+}

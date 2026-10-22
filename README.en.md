@@ -1,115 +1,49 @@
-# tia-integration-ai
+# tia-integration-ai (v2.0)
 
-> Integration between Artificial Intelligence and Siemens TIA Portal via MCP (Model Context Protocol)
+> Integration between Artificial Intelligence and Siemens TIA Portal via MCP (Model Context Protocol), OpenCode Portable v2, and Magic Context.
 
-This project enables automation engineers to use **Large Language Models (LLMs)** to interact with Siemens **TIA Portal** — generating, reviewing, and editing PLC logic (LAD, FBD, SCL) with AI assistance.
+[![Português](https://img.shields.io/badge/lang-Português-green.svg)](README.md)
+[![English](https://img.shields.io/badge/lang-English-blue.svg)](README.en.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Architecture
+This project provides a **portable OpenCode (v2+)** setup pre-configured to interact with **Siemens TIA Portal (V20 / V21)** — generating, reading, and editing PLC logic (LAD, FBD, SCL), tags, data blocks, hardware, and HMI screens with AI assistance.
 
-```
-┌──────────────────────────────────┐
-│         LLM Provider             │
-│      (user-configured)           │
-└──────────┬───────────────────────┘
-           │ HTTPS
-┌──────────▼───────────────────────┐
-│        OpenCode (CLI)            │
-│  Conversational AI interface     │
-└──┬───────────────┬───────────────┘
-   │ @tiav21       │ @tiaolder
-   │ MCP           │ MCP
-┌──▼─────────────┐ ┌▼─────────────────┐
-│ tiav21         │ │ tiaolder          │
-│ (Czarnak)      │ │ (bulaofen0036)    │
-│ ~25 tools      │ │ ~189 tools        │
-│ V21 fixed      │ │ Configurable ver. │
-└──┬─────────────┘ └──┬───────────────┘
-   │ Openness API     │ Openness API
-┌──▼──────────────────▼────────────────┐
-│    TIA Portal V20/V21            │
-│  Projects, blocks, tags, HW, network │
-└──────────────────────────────────────┘
-```
+---
 
-### Components
+## What's Included in v2.0
 
-| Component | Description |
-|---|---|
-| **OpenCode** | Conversational CLI connecting LLMs to tools via MCP |
-| **tiav21 (MCP)** | Czarnak server focused on V21 — block editing, tags, hardware (~25 tools) |
-| **tiaolder (MCP)** | bulaofen0036 server with configurable version — full project generation (~189 tools) |
-| **Openness API** | Siemens API for programmatic TIA Portal automation |
-| **HTTP Proxy** | CONNECT proxy for offline VM to access cloud APIs |
+1. **OpenCode Portable (`opencode.bat`):** Runs OpenCode v2 completely self-contained inside its folder (via `XDG_*` variables). If `opencode.exe` is missing on first launch (e.g. after cloning from Git), `opencode.bat` downloads it automatically.
+2. **Unified `TIA-PORTAL` MCP ([bulaofen0036-coder/TIA_Portal_Openness_MCP](https://github.com/bulaofen0036-coder/TIA_Portal_Openness_MCP)):** Single comprehensive MCP server (~222 tools with `--profile full`) with dynamic switching between **TIA Portal V20** and **V21** via `tiaolder-version.txt`.
+3. **Magic Context (`@cortexkit/opencode-magic-context`):** Background context compaction (`historian` + `dreamer`) and persistent project memory (`ctx_search`, `ctx_expand`, `ctx_memory`, `ctx_note`, `ctx_reduce`).
+4. **Auto-Updater (`atualizar.bat` / `update-all.ps1`) ⚠️ *(For testing — may break)*:** Experimental script that updates `opencode.exe`, the `Magic Context` plugin, and the `bulaofen0036` MCP release while preserving user configs and removing old versions.
 
-## Agents
+> [!WARNING]
+> **Notice Regarding the Auto-Updater (`atualizar.bat` / `update-all.ps1`):**
+> The automatic updater is included **for testing purposes and may break** if upstream release formats (GitHub/npm) or OpenCode schemas change. Always back up your folder before updating.
 
-| Agent | MCP | TIA Version | Focus |
-|---|---|---|---|
-| `@tiav21` | `tiav21` (Czarnak) | V21 (fixed) | SCL/LAD block editing, tags, hardware |
-| `@tiaolder` | `tiaolder` (bulaofen0036-coder) | Configurable (V16–V21, see branches) | Older version support (V16–V19), project scaffold |
+---
 
-See [AGENTS.md](AGENTS.md) for complete details.
+## How to Run
 
-## Features
+1. **Select your TIA Portal version:** edit `tiaolder-version.txt` with `20` (default) or `21`.
+2. **(Optional) If running inside an offline VM:** run `proxy\iniciar-proxy.bat` on the Host machine to provide internet over port `3128`.
+3. **Start OpenCode Portable:** double-click **`opencode.bat`**.
 
-- TIA Portal project tree navigation via AI
-- Read and edit LAD/FBD/SCL blocks
-- Tag creation and management
-- Hardware configuration reading
-- Compilation and cross-reference checks
-- AI-assisted PLC code generation
-- Full project scaffold with configurable version
-
-## AI Providers
-
-The workflow works with any OpenAI-compatible provider (cloud or local). Configuration is done via `opencode.json`:
-
-```json
-{
-  "provider": {
-    "my-provider": {
-      "options": {
-        "apiKey": "sk-your-key",
-        "baseURL": "https://api.provider.com/v1"
-      }
-    }
-  }
-}
-```
-
-See [docs/CONFIGURACAO.md](docs/CONFIGURACAO.md) for the full setup guide.
+---
 
 ## Documentation
 
-- [Agents](AGENTS.md) — @tiav21 and @tiaolder agent documentation
-- [Setup Guide](docs/CONFIGURACAO.md) — Full environment setup
-- [VM Proxy](docs/PROXY.md) — How to set up a proxy for an offline VM
-
-## Project Structure
-
-```
-tia-integration-ai/
-├── AGENTS.md               # Agent documentation
-├── LICENSE                  # MIT License
-├── opencode.example.json    # Example OpenCode configuration
-├── proxy.js                 # HTTP CONNECT proxy server
-├── README.md                # This file (Portuguese)
-├── README.en.md             # This file (English)
-├── scripts/
-│   ├── tia-mcp.cmd          # tiav21 MCP wrapper (Czarnak)
-│   ├── tia-openness.cmd     # tiaolder MCP wrapper (bulaofen0036)
-│   └── tiaolder-version.txt # TIA version for @tiaolder
-└── docs/
-    ├── CONFIGURACAO.md      # Full setup guide (Portuguese)
-    └── PROXY.md             # HTTP proxy guide
-```
+- [Agents & Tools](AGENTS.md) — `@tiaolder` (`TIA-PORTAL` MCP) and `Magic Context` reference
+- [Setup Guide](docs/CONFIGURACAO.md) — Full environment setup (Portuguese)
+- [VM Proxy](docs/PROXY.md) — HTTP CONNECT proxy guide (Portuguese)
 
 ## Credits
 
-| MCP | Author | Repository |
-|---|---|---|
-| **tiav21** | [Czarnak](https://github.com/Czarnak) | [tia-portal-mcp](https://github.com/Czarnak/tia-portal-mcp) |
-| **tiaolder** | [bulaofen0036-coder](https://github.com/bulaofen0036-coder) | [TIA Portal Openness MCP](https://github.com/bulaofen0036-coder/TIA_Portal_Openness_MCP) |
+| Component | Author / Repository |
+|---|---|
+| **TIA Portal Openness MCP** | [bulaofen0036-coder/TIA_Portal_Openness_MCP](https://github.com/bulaofen0036-coder/TIA_Portal_Openness_MCP) |
+| **Magic Context** | [cortexkit/magic-context](https://github.com/cortexkit/magic-context) |
+| **OpenCode** | [opencode.ai](https://opencode.ai) |
 
 ## License
 

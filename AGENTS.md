@@ -1,105 +1,106 @@
-# Agents
+# Agents & Ferramentas
 
-Este projeto utiliza o sistema de **agents** do OpenCode para expor dois MCP servers distintos de integração com TIA Portal. Cada agent oferece um conjunto diferente de ferramentas e capacidades.
-
-## @tiav21
-
-MCP server **Czarnak** focado no TIA Portal V21.
-
-| Propriedade | Valor |
-|---|---|
-| **MCP** | `tiav21` |
-| **Servidor** | Czarnak — [tia-portal-mcp](https://github.com/Czarnak/tia-portal-mcp) |
-| **Versão TIA** | V21 (fixo) |
-| **Ferramentas** | ~25 |
-| **Comando** | `tia-mcp.cmd` → `TiaMcpServer.exe` |
-
-### Ferramentas
-
-| Categoria | Tools |
-|---|---|
-| Navegação | `browse_project_tree` |
-| Blocos | `get_block_content`, `update_block_logic` (write) |
-| Tags | `list_tag_tables`, `create_tag`, `update_tag`, `delete_tag` |
-| Hardware | `read_hardware_config`, `search_equipment_catalog` |
-| Rede | `add_network_device`, `configure_network_device` |
-| Diagnóstico | `read_cross_references`, `compile_check` |
-| Projeto | `open_project`, `save_project`, `close_project` |
-
-> Operações de escrita exigem `confirm=true` explícito.
-
-### Uso
-
-```
-@tiav21 browse o projeto tia e me mostre a arvore
-@tiav21 crie uma tag chamada "Sensor_01" do tipo BOOL
-@tiav21 atualize a logica do bloco "Main" com este novo SCL
-```
+Este projeto utiliza o **OpenCode Portable (v2+)** com um único servidor MCP unificado para o TIA Portal (**`TIA-PORTAL`**, baseado no projeto [bulaofen0036-coder/TIA_Portal_Openness_MCP](https://github.com/bulaofen0036-coder/TIA_Portal_Openness_MCP)) e o plugin **Magic Context** (`@cortexkit/opencode-magic-context`) para gestão automática de contexto e memória.
 
 ---
 
-## @tiaolder
+## @tiaolder (MCP `TIA-PORTAL`)
 
-MCP server **bulaofen0036** com versão configurável do TIA Portal.
+Servidor MCP **bulaofen0036-coder** com versão configurável do TIA Portal.
 
 | Propriedade | Valor |
 |---|---|
-| **MCP** | `tiaolder` |
-| **Servidor** | bulaofen0036 — TIA Openness MCP |
-| **Versão TIA** | Configurável via `tiaolder-version.txt`: V20–V21 oficial (master); V19, V18, V17, V16 em branches comunitários |
-| **Ferramentas** | ~189 |
+| **Servidor MCP** | `TIA-PORTAL` ([bulaofen0036-coder/TIA_Portal_Openness_MCP](https://github.com/bulaofen0036-coder/TIA_Portal_Openness_MCP)) |
+| **Versão TIA** | Configurável via `tiaolder-version.txt` (`20` ou `21` no pacote padrão) |
+| **Ferramentas** | ~222 (`--profile full`) |
 | **Comando** | `tia-openness.cmd` |
+| **Definição do Agent** | `.opencode/agents/tiaolder.md` |
 
-### Configuração de Versão
+### Seleção de Versão do TIA Portal
 
-O arquivo `tiaolder-version.txt` define qual versão do TIA o agent usará:
+O arquivo `tiaolder-version.txt` na raiz define qual runtime o `tia-openness.cmd` executará:
 
-```
-20  →  V20 (padrão)
-21  →  V21
-19  →  V19 (branch comunitário)
-18  →  V18 (branch comunitário)
-17  →  V17 (branch comunitário)
-16  →  V16 (branch comunitário)
+```text
+20  →  TIA Portal V20 (runtime\v20\TiaMcpServer.exe — .NET Framework 4.8)
+21  →  TIA Portal V21 (runtime\v21\TiaMcpServer.exe — .NET 8.0 Windows)
 ```
 
-### Destaques
+### Principais Ferramentas (`TIA-PORTAL_*`)
 
-- Geração completa de projetos via `ScaffoldProject`
-- Ampla cobertura da Openness API (~189 tools)
-- Suporte a múltiplas versões do TIA Portal sem reconfigurar o servidor
+| Categoria | Ferramentas Principais |
+|---|---|
+| **Bootstrap / Sessão** | `Bootstrap`, `Doctor`, `GetState`, `Connect`, `ConnectIsolated` |
+| **Projeto** | `CreateProject`, `OpenProject`, `SaveProject`, `CloseProject`, `GetProjectTree`, `ScaffoldProject` |
+| **Blocos (LAD/SCL/DB)** | `GetBlocks`, `GetSoftwareTree`, `DescribeBlockLogic`, `ExportBlock`, `ImportBlock`, `ExportAsDocuments`, `ImportFromDocuments`, `PlcBuildAndImport`, `CreatePlcBlockGroup`, `MoveBlockToGroup`, `DeletePlcBlock` |
+| **Tags e UDTs** | `GetPlcTagTables`, `ExportTagTable`, `ImportTagTable`, `GetPlcTypes`, `DeletePlcTagTable`, `DeletePlcType` |
+| **Compilação** | `CompileAndDiagnosePlc`, `CompileSoftware`, `CompileAndDiagnoseHmi` |
+| **Hardware e Rede** | `AddDevice`, `GetDevices`, `GetProjectTopology`, `CreateSubnet`, `ConnectToSubnet` |
+| **HMI (WinCC Unified)** | `EnsureUnifiedHmiScreen`, `EnsureUnifiedHmiTag`, `ApplyUnifiedHmiScreenDesignJson` |
+| **Online (Leitura S7)** | `GetPlcRunStateS7`, `ReadPlcLiveValuesS7`, `MonitorWatchTableLiveS7` |
+| **Versionamento (VCI)** | `CreateVersionControlWorkspace`, `ConnectProjectToWorkspace`, `GetVersionControlStatus`, `SyncVersionControlWorkspace` |
+| **Descoberta de Tools** | `FindTools`, `CallTool` |
 
-### Uso
+### Fluxo Recomendado de Uso
 
-```
-@tiaolder crie um projeto novo com um CLP S7-1200 ou S7-1500
-@tiaolder adicione um bloco FB "ControleMotor" ao projeto
+1. `Bootstrap` → verifica o estado atual do servidor MCP.
+2. `Connect` (ou `ConnectIsolated` se o TIA Portal já estiver aberto com um projeto na interface gráfica).
+3. `GetProjectTree` → obtém os nomes exatos dos dispositivos (`PLC_xxx`, `HMI_RT_xxx`).
+4. `GetSoftwareTree` / `DescribeBlockLogic` / `ExportAsDocuments` / `ExportBlock` → leitura e edição.
+5. `CompileAndDiagnosePlc` + `SaveProject` → compilação, diagnóstico e salvamento.
+
+### Exemplos no Chat do OpenCode
+
+```text
+@tiaolder conecte ao projeto aberto no TIA Portal e mostre a árvore do projeto
+@tiaolder descreva a lógica do bloco Main (OB1) usando DescribeBlockLogic
+@tiaolder crie um projeto novo com um S7-1500 usando ScaffoldProject
 ```
 
 ---
 
-## Créditos
+## Magic Context (`@cortexkit/opencode-magic-context`)
 
-- **tiav21** — Desenvolvido por [Czarnak](https://github.com/Czarnak/tia-portal-mcp)
-- **tiaolder** — Desenvolvido por bulaofen0036-coder — [TIA Portal Openness MCP](https://github.com/bulaofen0036-coder/TIA_Portal_Openness_MCP)
+Plugin que gerencia o histórico da conversa (`<session-history>`) e a memória persistente do projeto (`<project-memory>`) em segundo plano, substituindo a compactação nativa do OpenCode (`compaction.auto: false`).
 
-## Exemplo de Configuração (opencode.json)
+### Ferramentas Expostas ao Agente (`ctx_*`)
+
+| Ferramenta | Descrição |
+|---|---|
+| `ctx_search` | Busca na memória do projeto e no histórico de turnos anteriores já compactados |
+| `ctx_expand` | Recupera o conteúdo original completo de um compartimento `<session-history>` |
+| `ctx_memory` | Grava fatos duráveis sobre o projeto (`PROJECT_RULES`, `ARCHITECTURE`, `CONSTRAINTS`, `CONFIG_VALUES`, `NAMING`) |
+| `ctx_note` | Registra lembretes temporários de trabalho |
+| `ctx_reduce` | Marca saídas grandes de ferramentas já utilizadas como descartáveis para liberar contexto |
+
+### Comandos no TUI
+
+- `/ctx-status` — Mostra o status do `historian`, `dreamer`, uso de contexto e compartimentos ativos.
+- `/ctx-wrapup` — Força a compactação imediata da sessão atual.
+
+---
+
+## Configuração (`config/opencode/opencode.json`)
 
 ```json
 {
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "Guias/MAGIC_CONTEXT_AGENTE.txt"
+  ],
   "mcp": {
-    "tiav21": {
-      "type": "local",
-      "command": ["cmd.exe", "/c", "C:\\TIA\\opencode-portable\\tia-mcp.cmd"],
-      "enabled": true,
-      "timeout": 120000
-    },
-    "tiaolder": {
-      "type": "local",
-      "command": ["cmd.exe", "/c", "C:\\TIA\\opencode-portable\\tia-openness.cmd"],
-      "enabled": true,
-      "timeout": 120000
+    "servers": {
+      "TIA-PORTAL": {
+        "type": "local",
+        "command": ["cmd.exe", "/c", ".\\tia-openness.cmd"],
+        "timeout": 120000
+      }
     }
-  }
+  },
+  "compaction": {
+    "auto": false
+  },
+  "plugins": [
+    "@cortexkit/opencode-magic-context@0.49.16"
+  ]
 }
 ```

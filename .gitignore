@@ -1,13 +1,17 @@
-# Sensible
-*.bat
-*.cmd
-opencode.json
-tiaolder-version.txt
+# Binario >100MB (baixado automaticamente no 1o uso pelo opencode.bat / atualizar.bat)
+opencode.exe
 
-# Allow example scripts in scripts/
-!scripts/*.cmd
-!scripts/*.bat
-!scripts/tiaolder-version.txt
+# Dados de sessao, caches e logs gerados em runtime
+data/
+state/
+cache/
+temp/
+*.db
+*.db-shm
+*.db-wal
+*.log
+config/opencode/service.json
+auth.json
 
 # OS
 .DS_Store
