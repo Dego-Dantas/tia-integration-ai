@@ -79,12 +79,22 @@ function Invoke-Api([string]$Uri) {
 }
 
 function Download-File([string]$Uri, [string]$OutFile) {
+  $curlArgs = @("-fL", "--ssl-no-revoke")
   if ($UseProxy) {
-    & curl.exe -fL -x $ProxyUrl "$Uri" -o "$OutFile"
-  } else {
-    & curl.exe -fL "$Uri" -o "$OutFile"
+    $curlArgs += @("-x", $ProxyUrl)
   }
+  $curlArgs += @($Uri, "-o", $OutFile)
+
+  & curl.exe @curlArgs
   if ($LASTEXITCODE -ne 0 -or -not (Test-Path $OutFile)) {
+    Write-Info "Tentando download alternativo via Invoke-WebRequest..."
+    if ($UseProxy) {
+      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -Proxy $ProxyUrl -TimeoutSec 120
+    } else {
+      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -TimeoutSec 120
+    }
+  }
+  if (-not (Test-Path $OutFile)) {
     throw "Falha ao baixar: $Uri"
   }
 }
